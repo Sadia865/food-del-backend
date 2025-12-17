@@ -11,11 +11,16 @@ const app = express();
 const port = 4000;
 
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:5174"],
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://food-del-admin-gamma-seven.vercel.app/" // <-- add your live admin URL
+  ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "token"],
   credentials: true
 }));
+
 
 // Body parsers
 app.use(express.json());
