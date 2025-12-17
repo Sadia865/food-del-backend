@@ -14,13 +14,13 @@ app.use(cors({
   origin: [
     "http://localhost:5173",
     "http://localhost:5174",
-    "https://food-del-admin-gamma-seven.vercel.app/" // <-- add your live admin URL
+    "https://food-del-admin-gamma-seven.vercel.app",  // removed trailing slash
+    "https://food-del-frontend-eta-three.vercel.app"  // ADD THIS - your main frontend
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "token"],
   credentials: true
 }));
-
 
 // Body parsers
 app.use(express.json());
