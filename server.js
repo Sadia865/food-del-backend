@@ -4,23 +4,25 @@ import { connectDB } from "./config/db.js";
 import foodRouter from "./routes/foodRoute.js";
 import userRouter from "./routes/userRoute.js";
 import cartRouter from "./routes/cartRoute.js";
-import 'dotenv/config';
 import orderRouter from "./routes/orderRoute.js";
+import "dotenv/config";
 
 const app = express();
-const port = 4000;
+const port = process.env.PORT || 4000;
 
-app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "https://food-del-admin-gamma-seven.vercel.app",  // removed trailing slash
-    "https://food-del-frontend-eta-three.vercel.app"  // ADD THIS - your main frontend
-  ],
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "token"],
-  credentials: true
-}));
+// ✅ CORS (STABLE)
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://food-del-admin-gamma-seven.vercel.app",
+      "https://food-del-frontend-eta-three.vercel.app",
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "token"],
+  })
+);
 
 // Body parsers
 app.use(express.json());
@@ -28,23 +30,30 @@ app.use(express.urlencoded({ extended: true }));
 
 // Static files
 app.use("/uploads", express.static("uploads"));
-app.use("/images", express.static('uploads'));
+app.use("/images", express.static("uploads"));
 
-// DB connection
-connectDB();
-
-// API routes
+// Routes
 app.use("/api/food", foodRouter);
 app.use("/api/user", userRouter);
 app.use("/api/cart", cartRouter);
-app.use("/api/order",orderRouter);
+app.use("/api/order", orderRouter);
 
-// Test endpoint
+// Test route
 app.get("/", (req, res) => {
   res.send("API Working");
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`Server Started on http://localhost:${port}`);
-});
+// ✅ Start server ONLY after DB connects
+const startServer = async () => {
+  try {
+    await connectDB();
+    app.listen(port, () => {
+      console.log(`✅ Server running on port ${port}`);
+    });
+  } catch (error) {
+    console.error("❌ Server failed to start:", error.message);
+    process.exit(1);
+  }
+};
+
+startServer();
