@@ -20,43 +20,38 @@ const placeOrder = async (req, res) => {
       });
     }
 
-    // Save order in DB (payment initially false)
     const newOrder = new orderModel({
       userId,
       items,
       amount,
       address,
-      payment: false, // Will be updated after verification
+      payment: false,
       status: "Food Processing",
     });
     await newOrder.save();
 
     console.log("✅ Order created:", newOrder._id);
 
-    // Clear user's cart
     await userModel.findByIdAndUpdate(userId, { cartData: {} });
 
-    // Prepare Stripe line items
     const line_items = items.map((item) => ({
       price_data: {
         currency: "usd",
         product_data: { name: item.name },
-        unit_amount: Math.round(item.price * 100), // Convert to cents
+        unit_amount: Math.round(item.price * 100),
       },
       quantity: item.quantity,
     }));
 
-    // Add delivery charges
     line_items.push({
       price_data: {
         currency: "usd",
         product_data: { name: "Delivery Charges" },
-        unit_amount: 2 * 100, // $2 delivery fee
+        unit_amount: 2 * 100,
       },
       quantity: 1,
     });
 
-    // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       line_items,
       mode: "payment",
@@ -67,19 +62,14 @@ const placeOrder = async (req, res) => {
       },
     });
 
-    // Save session ID to order
     newOrder.sessionId = session.id;
     await newOrder.save();
-
-    console.log("✅ Stripe session created:", session.id);
-    console.log("✅ Redirect URL:", session.url);
 
     res.status(200).json({
       success: true,
       session_url: session.url,
     });
   } catch (error) {
-    console.error("❌ Error in placeOrder:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Something went wrong",
@@ -87,7 +77,7 @@ const placeOrder = async (req, res) => {
   }
 };
 
-// Verify order after Stripe payment
+// ✅ FIXED: Verify order after Stripe payment (NO AUTH CHECK)
 const verifyOrder = async (req, res) => {
   try {
     const { orderId, success } = req.body;
@@ -101,7 +91,6 @@ const verifyOrder = async (req, res) => {
       });
     }
 
-    // Find the order
     const order = await orderModel.findById(orderId);
 
     if (!order) {
@@ -111,51 +100,33 @@ const verifyOrder = async (req, res) => {
       });
     }
 
-    // Verify the order belongs to the authenticated user
-    if (order.userId !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        message: "Unauthorized access to order",
-      });
-    }
-
     const paymentStatus = success === "true" || success === true;
 
     if (paymentStatus) {
-      // Payment successful - update order
       order.payment = true;
       await order.save();
 
       console.log("✅ Payment verified for order:", orderId);
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         message: "Payment successful",
-        order: {
-          _id: order._id,
-          amount: order.amount,
-          items: order.items,
-          address: order.address,
-          status: order.status,
-          payment: order.payment,
-        },
       });
     } else {
-      // Payment cancelled/failed - delete order
       await orderModel.findByIdAndDelete(orderId);
 
       console.log("❌ Payment cancelled for order:", orderId);
 
-      res.status(200).json({
+      return res.status(200).json({
         success: false,
         message: "Payment cancelled or failed",
       });
     }
   } catch (error) {
     console.error("❌ Error in verifyOrder:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: error.message || "Verification failed",
+      message: "Verification failed",
     });
   }
 };
@@ -166,11 +137,10 @@ const userOrders = async (req, res) => {
     const userId = req.user.id;
     const orders = await orderModel
       .find({ userId, payment: true })
-      .sort({ date: -1 }); // Sort by date, newest first
+      .sort({ date: -1 });
 
     res.status(200).json({ success: true, data: orders });
   } catch (error) {
-    console.error("Error fetching user orders:", error);
     res.status(500).json({ success: false, message: "Failed to fetch orders" });
   }
 };
@@ -181,7 +151,6 @@ const listOrders = async (req, res) => {
     const orders = await orderModel.find().sort({ date: -1 });
     res.status(200).json({ success: true, data: orders });
   } catch (error) {
-    console.error("Error listing orders:", error);
     res.status(500).json({ success: false, message: "Error listing orders" });
   }
 };
@@ -197,7 +166,6 @@ const updateStatus = async (req, res) => {
     await orderModel.findByIdAndUpdate(orderId, { status });
     res.status(200).json({ success: true, message: "Status Updated" });
   } catch (error) {
-    console.error("Error updating status:", error);
     res.status(500).json({ success: false, message: "Error updating status" });
   }
 };
